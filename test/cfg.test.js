@@ -54,27 +54,40 @@ describe('The symbol substitution', () => {
     });
     it('handle if else statements', () => {
         assert.equal(
-            createCfgGraph('function func(){\n' + 'let x=1;\n' + 'const y=2;\n' + 'var a = x;\n' + 'if(a>y){\n' + 'x = 2;\n'+ 'return a+1;}\n' +
-                                        'else if(a<y){\n' + 'x=x+1;}\n' + 'else\n' + 'return x+y;\n' + 'return x;\n}', {}),
-            'op1=>operation: ** 1 **\nx = 1\ny = 2\na = x\n | approved\ncond1=>condition: ** 2 **\na > y | approved\nop2=>operation: ** 3 **\nx = 2\n| else\nop3=>operation: ** 4 **\nreturn a + 1 | approved\ncond2=>condition: ** 5 **\na < y | approved\nop4=>operation: ** 6 **\nx = x + 1\n | approved\nst1=>start: ** 7 **\n| else\nop5=>operation: ** 8 **\nreturn x + y | approved\nst2=>start: ** 9 **\n | approved\nop6=>operation: ** 10 **\nreturn x | approved\nop1->cond1\ncond1(yes)->op2\nop2->op3\nop2->st2\ncond1(no)->op3\nop2->op3\nop2->st2\ncond2(yes)->op4\nop4->st2\ncond2(no)->st1\nop4->st2\nst1->op5\nst1->st2\nst2->op6\n'
+            createCfgGraph('function func(){\n' + 'let x=1;\n' + 'const y=2;\n' + 'var a = x;\n' + 'if(a>y){\n' + 'x = 2}\n' +
+                                        'else if(a<y){\n' + 'x=x+1;}\n' + 'else\n' + 'x = 3;\n' + 'return x;\n}', {}),
+            'op1=>operation: ** 1 **\nx = 1\ny = 2\na = x\n | approved\ncond1=>condition: ** 2 **\na > y | approved\nop2=>operation: ** 3 **\nx = 2\n| else\ncond2=>condition: ** 4 **\na < y | approved\nop3=>operation: ** 5 **\nx = x + 1\n | approved\nop4=>operation: ** 6 **\nx = 3\n| else\nst1=>start: ** 7 **\n | approved\nop5=>operation: ** 8 **\nreturn x | approved\nop1->cond1\ncond1(yes)->op2\nop2->st1\ncond1(no)->cond2\nop2->st1\ncond2(yes)->op3\nop3->st1\ncond2(no)->op4\nop3->st1\nop4->st1\nst1->op5\n'
+        );
+    });
+    it('handle if else without else statements', () => {
+        assert.equal(
+            createCfgGraph('function func(){\n' + 'let x=1;\n' + 'const y=2;\n' + 'var a = x;\n' + 'if(a>y){\n' + 'x = 2}\n' +
+                                        'else if(a<y){\n' + 'x=x+1;}\n' + 'return x;\n}', {}),
+            'op1=>operation: ** 1 **\nx = 1\ny = 2\na = x\n | approved\ncond1=>condition: ** 2 **\na > y | approved\nop2=>operation: ** 3 **\nx = 2\n| else\ncond2=>condition: ** 4 **\na < y | approved\nop3=>operation: ** 5 **\nx = x + 1\n | approved\nst1=>start: ** 6 **\n | approved\nop4=>operation: ** 7 **\nreturn x | approved\nop1->cond1\ncond1(yes)->op2\nop2->st1\ncond1(no)->cond2\nop2->st1\ncond2(yes)->op3\nop3->st1\ncond2(no)->st1\nop3->st1\nst1->op4\n'
+        );
+    });
+    it('handle if without else statements', () => {
+        assert.equal(
+            createCfgGraph('function func(){\n' + 'let x=1;\n' + 'const y=2;\n' + 'var a = x;\n' + 'if(a>y){\n' + 'x = 2;\n'+ 'return a+1;}}', {}),
+            'op1=>operation: ** 1 **\nx = 1\ny = 2\na = x\n | approved\ncond1=>condition: ** 2 **\na > y | approved\nop2=>operation: ** 3 **\nx = 2\n| else\nop3=>operation: ** 4 **\nreturn a + 1 | approved\nst1=>start: ** 5 **\n | approved\nop1->cond1\ncond1(yes)->op2\nop2->op3\nop2->st1\ncond1(no)->op3\nop2->op3\nop2->st1\n'
         );
     });
     it('handle nested if statements', () => {
         assert.equal(
             createCfgGraph('function func(){\n' + 'let y;\n' + 'let x=2;\n' + 'if(x>1){\n'+ 'if(x>2){\n' + 'x=x+1;}}\n'+ 'return x+1;}\n', {}),
-            'op1=>operation: ** 1 **\ny\nx = 2\n | approved\ncond1=>condition: ** 2 **\nx > 1 | approved\ncond2=>condition: ** 3 **\nx > 2 | approved\nop2=>operation: ** 4 **\nx = x + 1\n| else\nst1=>start: ** 5 **\n | approved\nop3=>operation: ** 6 **\nreturn x + 1 | approved\nop1->cond1\ncond1(yes)->cond2\ncond2(yes)->op2\nop2->st1\ncond2(no)->st1\ncond1(no)->op3\ncond2(yes)->op2\nop2->st1\ncond2(no)->st1\nop2->st1\nst1->op3\n'
+            'op1=>operation: ** 1 **\ny\nx = 2\n | approved\ncond1=>condition: ** 2 **\nx > 1 | approved\ncond2=>condition: ** 3 **\nx > 2 | approved\nop2=>operation: ** 4 **\nx = x + 1\n| else\nst1=>start: ** 5 **\n | approved\nop3=>operation: ** 6 **\nreturn x + 1 | approved\nop1->cond1\ncond1(yes)->cond2\ncond2(yes)->op2\nop2->st1\ncond2(no)->st1\ncond1(no)->st1\ncond2(yes)->op2\nop2->st1\ncond2(no)->st1\nop2->st1\nst1->op3\n'
         );
     });
     it('handle while statements', () => {
         assert.equal(
-            createCfgGraph('function func(){\n' + 'let x=1, y=2;\n' +  'x++;\n' + 'let a = x;\n' + 'y = a + 1;\n' + 'while(a>y)\n' + 'return a+1;}', {}),
-            'op1=>operation: ** 1 **\nx = 1, y = 2\nx++\na = x\ny = a + 1\n | approved\ncond1=>condition: ** 2 **\na > y | approved\nst1=>start: ** 3 **\n| else\nop2=>operation: ** 4 **\nreturn a + 1 | approved\nst2=>start: ** 5 **\n | approved\nop1->cond1\ncond1(yes)->st1\nst1->op2\ncond1(no)->op2\nst1->op2\nop2->cond1\n'
+            createCfgGraph('function func(){\n' + 'let x=1, y=2;\n' +  'x++;\n' + 'let a = x;\n' + 'while(a>y)\n' + 'y = a + 1;\n' + 'return a+1;}', {}),
+            'op1=>operation: ** 1 **\nx = 1, y = 2\nx++\na = x\n | approved\ncond1=>condition: ** 2 **\na > y | approved\nop2=>operation: ** 3 **\ny = a + 1\n| else\nop3=>operation: ** 4 **\nreturn a + 1 | approved\nop1->cond1\ncond1(yes)->op2\nop2->cond1\ncond1(no)->op3\nop2->cond1\n'
         );
     });
     it('handle nested while statements', () => {
         assert.equal(
-            createCfgGraph('function func(){\n' + 'let y;\n' + 'let x=2;\n' + 'while(x>1){\n'+ 'if(x>2){\n' + 'x=x+1;}}\n'+ 'return x+1;}\n', {}),
-            'op1=>operation: ** 1 **\ny\nx = 2\n | approved\ncond1=>condition: ** 2 **\nx > 1 | approved\ncond2=>condition: ** 3 **\nx > 2 | approved\nop2=>operation: ** 4 **\nx = x + 1\n| else\nst1=>start: ** 5 **\n | approved\nop3=>operation: ** 6 **\nreturn x + 1 | approved\nop1->cond1\ncond1(yes)->cond2\ncond2(yes)->op2\nop2->st1\ncond2(no)->st1\ncond1(no)->op3\ncond2(yes)->op2\nop2->st1\ncond2(no)->st1\nop2->st1\nst1->cond1\n'
+            createCfgGraph('function func(){\n' + 'let y;\n' + 'let x=2;\n' + 'if(x>1){\n'+ 'while(x==2){\n' + 'x=x+1;}}\n'+ 'return x+1;}\n', {}),
+            'op1=>operation: ** 1 **\ny\nx = 2\n | approved\ncond1=>condition: ** 2 **\nx > 1 | approved\ncond2=>condition: ** 3 **\nx == 2 | approved\nop2=>operation: ** 4 **\nx = x + 1\n | approved\nst1=>start: ** 5 **\n | approved\nop3=>operation: ** 6 **\nreturn x + 1 | approved\nop1->cond1\ncond1(yes)->cond2\ncond2(yes)->op2\nop2->cond2\ncond2(no)->st1\ncond1(no)->st1\ncond2(yes)->op2\nop2->cond2\ncond2(no)->st1\nop2->cond2\nst1->op3\n'
         );
     });
     it('handle condition with unary variable', () => {

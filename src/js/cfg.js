@@ -107,12 +107,14 @@ function whileStatementHandler(element, args, isTrue, scopeString = ''){
     stringToCheck += scopeString + condition + '}'; 
     if(checkNestedCondition(stringToCheck, isTrue) || checkCondition(numberOfScopes, stringToCheck))
         isTrue = true;
+    else
+        isTrue = false;
     functionString += 'while(' + condition + ')';
     addWhileToDictionary(element, args, isTrue, scopeString, isFeasible, condition);
 }
 
 function checkIfIsTrue(scopeString, isTrue){
-    return scopeString.length == 0 ? false : isTrue;
+    return numberOfScopes == 1 ? false : isTrue;
 }
 
 function checkNestedCondition(stringToCheck, isTrue){
@@ -124,14 +126,25 @@ function checkCondition(numberOfScopes, stringToCheck){
 }
 
 function addWhileToDictionary(element, args, isTrue, scopeString, isFeasible, condition){
-    codeNodes[currentIndex].children.push(++currentIndex);
-    let whileNode = currentIndex;
-    codeNodes[currentIndex] = {'content': [condition], 'children': [++currentIndex], 'isFeasible': isFeasible, 'truePath': undefined, 'isCondition': true};
+    initialWhileNodeInDictionary(isFeasible, condition);
+    let whileNode = currentIndex - 1;
     codeNodes[currentIndex] = {'content': [], 'children': [], 'isFeasible': isTrue, 'truePath': true, 'isCondition': false};
     createItemAccordingToType(element.body, args, isTrue, scopeString);
     codeNodes[currentIndex].children.push(whileNode);
     codeNodes[++currentIndex] = {'content': [], 'children': [], 'isFeasible': isFeasible, 'truePath': false, 'isCondition': false, 'fromWhile':true};
     codeNodes[whileNode].children.push(currentIndex);
+}
+
+function initialWhileNodeInDictionary(isFeasible, condition){
+    if(codeNodes[currentIndex].content.length == 0)
+        codeNodes[currentIndex].isCondition = true;
+    else {
+        codeNodes[currentIndex].children.push(++currentIndex);
+        codeNodes[currentIndex] = {'content': [], 'children': [], 'isFeasible': isFeasible, 'truePath': true, 'isCondition': true};
+    }
+    codeNodes[currentIndex].content.push(condition);
+    codeNodes[currentIndex].isFeasible = isFeasible;
+    codeNodes[currentIndex].children.push(++currentIndex);
 }
 
 function unaryExpressionHandler(element, args, isTrue){
@@ -206,7 +219,7 @@ function evalCondition(isTrue, scopeString, condition){
 
 function alternareHandler(element, args, isTrue, conditionNodes, blocksNodes){
     if(element.alternate.type === 'IfStatement')
-        ifStatementHandler(element.alternate, args, isTrue, conditionNodes, blocksNodes);
+        ifStatementHandler(element.alternate, args, isTrue, conditionNodes, blocksNodes, 'else if');
     else 
         elseHandler(element, args, isTrue, conditionNodes, blocksNodes);
 }
@@ -224,6 +237,8 @@ function elseHandler(element, args, isTrue, conditionNodes, blocksNodes){
 function connectConditionsNodeToNextNode(conditionNodes){
     if(codeNodes[currentIndex].content.length > 0)
         codeNodes[++currentIndex] = {'content': [], 'children': [], 'isFeasible': true, 'truePath': false, 'isCondition': false};
+    else if(checkIfLastNodeIsWhileEnd())
+        codeNodes[currentIndex].fromWhile = false;
     conditionNodes.forEach(node => {
         codeNodes[node].children.push(currentIndex);
     });
@@ -231,12 +246,16 @@ function connectConditionsNodeToNextNode(conditionNodes){
 
 function returnStatementHandler(element, args, isTrue){
     let value = createItemAccordingToType(element.argument, args, isTrue);
-    if(codeNodes[currentIndex].content.length == 0 && codeNodes[currentIndex].fromWhile != undefined && codeNodes[currentIndex].fromWhile == true)
+    if(checkIfLastNodeIsWhileEnd())
         codeNodes[currentIndex].content.push('return ' + value);
     else {
         codeNodes[currentIndex].children.push(++currentIndex);
         codeNodes[currentIndex] = {'content': ['return ' + value], 'children': [], 'isFeasible': true, 'truePath': undefined, 'isCondition': false};
     }
+}
+
+function checkIfLastNodeIsWhileEnd(){
+    return codeNodes[currentIndex].content.length == 0 && codeNodes[currentIndex].fromWhile != undefined && codeNodes[currentIndex].fromWhile == true;
 }
 
 function blockStatementHandler(element, args, isTrue){
@@ -320,8 +339,8 @@ function createNodesInitialString(){
 function createGraphFlowString(graphString, nodesMapping){
     let alreadyCheckedNodes = [];
     for (let id in nodesMapping){
-        if(alreadyCheckedNodes.includes(id))
-            continue;
+        // if(alreadyCheckedNodes.includes(id))
+        //     continue;
         let nodesStringResult = createNodesString(graphString, nodesMapping, id, alreadyCheckedNodes);
         alreadyCheckedNodes = nodesStringResult[0];
         graphString = nodesStringResult[1];
@@ -334,7 +353,7 @@ function createNodesString(graphString, nodesMapping, id, alreadyCheckedNodes){
         let conditionOutput = conditionStringGraph(graphString, nodesMapping, id);
         graphString = conditionOutput[0];
         for(let i = id; i <= conditionOutput[1]; i++)
-            alreadyCheckedNodes.push(id);
+            alreadyCheckedNodes.push(i);
     }
     else {
         for(let child in codeNodes[id].children){
@@ -357,7 +376,8 @@ function conditionStringGraph(graphString, nodesMapping, id){
             graphString += nodesMapping[id] + '->' + nodesMapping[codeNodes[id].children[child]] + '\n';
         }
     }
-    if(!codeNodes[++id].truePath)
-        graphString += nodesMapping[originalId] + '(no)->' + nodesMapping[id] + '\n';
+    if(codeNodes[id].truePath)
+        id++;
+    graphString += nodesMapping[originalId] + '(no)->' + nodesMapping[id] + '\n';
     return [graphString, id];
 }
