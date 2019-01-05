@@ -99,7 +99,7 @@ function binaryExpressionHandler(element, args, isTrue){
 
 function whileStatementHandler(element, args, isTrue, scopeString = ''){
     let isFeasible = isTrue === undefined ? true : isTrue; 
-    isTrue = checkIfIsTrue(scopeString, isTrue);
+    isTrue = checkIfIsTrue(isTrue);
     let condition = createItemAccordingToType(element.test, args, isTrue);
     let stringToCheck = functionString;
     for(let i = 1; i < numberOfScopes; i++)
@@ -113,7 +113,7 @@ function whileStatementHandler(element, args, isTrue, scopeString = ''){
     addWhileToDictionary(element, args, isTrue, scopeString, isFeasible, condition);
 }
 
-function checkIfIsTrue(scopeString, isTrue){
+function checkIfIsTrue(isTrue){
     return numberOfScopes == 1 ? false : isTrue;
 }
 
@@ -192,7 +192,7 @@ function initialIfNodeInDictionary(conditionNodes, isFeasible, truePath){
 
 function addIfToDictionary(element, args, isTrue, conditionNodes, blocksNodes, isFeasible, type, scopeString){
     let condition = createItemAccordingToType(element.test, args, isTrue, scopeString);
-    isTrue = evalCondition(isTrue, scopeString, condition);
+    isTrue = evalCondition(isTrue, scopeString, condition, numberOfScopes);
     conditionNodes.push(currentIndex);
     codeNodes[currentIndex].content.push(condition);
     codeNodes[currentIndex].isFeasible = isFeasible;
@@ -206,7 +206,7 @@ function addIfToDictionary(element, args, isTrue, conditionNodes, blocksNodes, i
     return isTrue;
 }
 
-function evalCondition(isTrue, scopeString, condition){
+export function evalCondition(isTrue, scopeString, condition, numberOfScopes){
     let stringToCheck = functionString;
     for(let i = 1; i < numberOfScopes; i++)
         stringToCheck += '}';

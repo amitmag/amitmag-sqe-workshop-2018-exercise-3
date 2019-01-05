@@ -1,5 +1,5 @@
 import assert from 'assert';
-import {createArgumentsDeclarationString, createCfgGraph} from '../src/js/cfg';
+import {createArgumentsDeclarationString, createCfgGraph, evalCondition} from '../src/js/cfg';
 
 describe('Function string creation', () => {
     let args1 = {x:1, y:2, z:3};
@@ -11,33 +11,23 @@ describe('Function string creation', () => {
     });
 });
 
-describe('The symbol substitution', () => {
-    it('replace local variables', () => {
+describe('The condition evaluation', () => {
+    let args1 = {x:1, y:2, z:3};
+
+    it('evaluate simple condition successfully', () => {
         assert.equal(
-            createCfgGraph('function func(x){\n' + 'let a=x;\n' + 'return a;\n' +'}', {}),
-            'op1=>operation: ** 1 **\na = x\n | approved\nop2=>operation: ** 2 **\nreturn a | approved\nop1->op2\n'
+            evalCondition(true, '', '{let x=1; let y=2; x>y', 1), false
         );
     });
+    it('evaluate variable value update successfully', () => {
+        assert.equal(
+            evalCondition(true, '', '{let x=1; let y=2; if(x<y)x=2; x==y', 1), true
+        );
+    });
+});
 
-    // it('handle global variables', () => {
-    //     assert.equal(
-    //         createCfgGraph('let x=2;\n' + 'function func(){\n' + 'let a=x+1;\n' + 'return a;\n' +'}', {}),
-    //         '<pre>let x = 2;</pre><pre>function func(){</pre><pre>return (x + 1);</pre><pre> }</pre>'
-    //     );
-    // });
-    // it('replace local variables with the function arguments', () => {
-    //     let symbolTable = {};
-    //     symbolTable['x'] = [];
-    //     symbolTable['y'] = [];
-    //     symbolTable['z'] = [];
-    //     symbolTable['x'].push({'line': 0, 'conditions:': [], 'value:': 1});
-    //     symbolTable['y'].push({'line': 0, 'conditions:': [], 'value:': 2});
-    //     symbolTable['z'].push({'line': 0, 'conditions:': [], 'value:': 3});
-    //     assert.equal(
-    //         createCfgGraph('function func(x, y, z){\n' + 'let a=x+y+z;\n' + 'if(a>5)\n' + 'return a+a;\n' +'}', symbolTable),
-    //         '<pre>function func(x,y,z)  {</pre><pre class=red>if((x + y + z) > 5)</pre><pre>return (x + y + z) + (x + y + z);</pre><pre> }</pre>'
-    //     );
-    // });
+describe('The cfg graph creator', () => {
+
     it('handle arrays variables', () => {
         let symbolTable = {};
         assert.equal(
@@ -68,8 +58,8 @@ describe('The symbol substitution', () => {
     });
     it('handle if without else statements', () => {
         assert.equal(
-            createCfgGraph('function func(){\n' + 'let x=1;\n' + 'const y=2;\n' + 'var a = x;\n' + 'if(a>y){\n' + 'x = 2;\n'+ 'return a+1;}}', {}),
-            'op1=>operation: ** 1 **\nx = 1\ny = 2\na = x\n | approved\ncond1=>condition: ** 2 **\na > y | approved\nop2=>operation: ** 3 **\nx = 2\n| else\nop3=>operation: ** 4 **\nreturn a + 1 | approved\nst1=>start: ** 5 **\n | approved\nop1->cond1\ncond1(yes)->op2\nop2->op3\nop2->st1\ncond1(no)->op3\nop2->op3\nop2->st1\n'
+            createCfgGraph('function func(){\n' + 'let x=1;\n' + 'const y=2;\n' + 'var a = x;\n' + 'if(a>y)\n' + 'x = 2;\n'+'if(a<y)\n' + 'x = 3;\n' + 'return a+1;}', {}),
+            'op1=>operation: ** 1 **\nx = 1\ny = 2\na = x\n | approved\ncond1=>condition: ** 2 **\na > y | approved\nop2=>operation: ** 3 **\nx = 2\n| else\ncond2=>condition: ** 4 **\na < y | approved\nop3=>operation: ** 5 **\nx = 3\n | approved\nst1=>start: ** 6 **\n | approved\nop4=>operation: ** 7 **\nreturn a + 1 | approved\nop1->cond1\ncond1(yes)->op2\nop2->cond2\ncond1(no)->cond2\nop2->cond2\ncond2(yes)->op3\nop3->st1\ncond2(no)->st1\nop3->st1\nst1->op4\n'
         );
     });
     it('handle nested if statements', () => {
